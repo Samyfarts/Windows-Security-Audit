@@ -1,4 +1,11 @@
-$report = "$HOME\Documents\systemrapport.txt"
+$scriptFolder = if ($PSScriptRoot) {
+    $PSScriptRoot
+}
+else {
+    Get-Location
+}
+
+$report = Join-Path $scriptFolder "systemrapport.txt"
 
 "=== WINDOWS SECURITY AUDIT ===" | Out-File $report
 "Generated: $(Get-Date)" | Out-File $report -Append
