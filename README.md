@@ -63,6 +63,13 @@ PowerShell-scriptet samler informasjon om:
 \- prosessene som eier nettverksforbindelsene
 
 
+## Report preview
+
+The tool generates a local HTML report with a summary of security findings.
+
+![Windows Security Audit HTML report](docs/security-report-preview.png)
+
+
 
 \## Prosjektstruktur
 
