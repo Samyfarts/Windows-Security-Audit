@@ -7,6 +7,8 @@ else {
 
 $report = Join-Path $scriptFolder "systemrapport.txt"
 
+$htmlReport = Join-Path $scriptFolder "security-report.html"
+
 "=== WINDOWS SECURITY AUDIT ===" | Out-File $report
 "Generated: $(Get-Date)" | Out-File $report -Append
 
@@ -115,10 +117,18 @@ $networkProfiles = Get-NetConnectionProfile
 $systemDrive = Get-Volume -DriveLetter C
 
 $adminGroup = Get-LocalGroup -SID "S-1-5-32-544"
+
 $enabledAdmins = Get-LocalGroupMember -Group $adminGroup |
     Where-Object {
         $_.ObjectClass -eq "User" -and
-        $_.Name -ne "$env:COMPUTERNAME\Administrator"
+        $_.PrincipalSource -eq "Local"
+    } |
+    ForEach-Object {
+        $accountName = ($_.Name -split "\\")[-1]
+        Get-LocalUser -Name $accountName -ErrorAction SilentlyContinue
+    } |
+    Where-Object {
+        $_.Enabled -eq $true
     }
 
 if ($firewallProfiles.Enabled -contains $false) {
@@ -192,5 +202,7 @@ else {
         Out-File $report -Append
 }
 
+
 Write-Host "Security audit completed."
-Write-Host "Report saved to: $report"
+Write-Host "Text report saved to: $report"
+Write-Host "HTML report saved to: $htmlReport"
