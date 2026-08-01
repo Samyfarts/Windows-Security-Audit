@@ -1,87 +1,66 @@
+# Windows Security Audit
+
+A PowerShell project that collects system information and performs a basic security assessment of a Windows computer.
+
+The project was created as a practical exercise in PowerShell, Windows administration, networking, and basic cybersecurity.
+
+## Purpose
+
+The goals of the project are to:
+
+- collect relevant system information automatically
+- check basic security settings
+- identify possible security risks
+- document the system status in a readable report
+- practise PowerShell pipelines, objects, and automation
+
+## Features
+
+The PowerShell script collects information about:
+
+- operating system and build number
+- active network adapters
+- IPv4 and IPv6 addresses
+- default gateway and DNS servers
+- active network profile
+- Windows Firewall
+- Microsoft Defender
+- local user accounts
+- members of the local Administrators group
+- available disk space
+- active TCP connections
+- processes that own the network connections
+
+The script also performs an automatic security assessment of:
+
+- firewall status
+- Microsoft Defender real-time protection
+- Defender signature age
+- active network profile
+- enabled local administrator accounts
+- available space on the system drive
+- age of the latest full Defender scan
+
+The assessment results are classified as:
+
+- `OK`
+- `REVIEW`
+- `WARNING`
+
+## Report Preview
+
+The tool generates a local HTML report with a summary of the security findings.
+
 ![Windows Security Audit HTML report](docs/security-report-preview.jpeg)
 
-
-
-Et PowerShell-prosjekt som samler systeminformasjon og gjennomfører en enkel sikkerhetskontroll av en Windows-maskin.
-
-
-
-Prosjektet ble laget som praktisk øvelse i PowerShell, Windows-administrasjon, nettverk og grunnleggende cybersikkerhet.
-
-
-
-\## Formål
-
-
-
-Målet med prosjektet er å:
-
-
-
-\- samle relevant systeminformasjon automatisk
-
-\- kontrollere grunnleggende sikkerhetsinnstillinger
-
-\- identifisere mulige sikkerhetsrisikoer
-
-\- dokumentere status i en lesbar rapport
-
-\- øve på PowerShell-pipelines, objekter og automatisering
-
-
-
-\## Funksjoner
-
-
-
-PowerShell-scriptet samler informasjon om:
-
-
-
-\- operativsystem og buildnummer
-
-\- aktive nettverksadaptere
-
-\- IPv4- og IPv6-adresser
-
-\- standard gateway og DNS-servere
-
-\- aktiv nettverksprofil
-
-\- Windows-brannmur
-
-\- Microsoft Defender
-
-\- lokale brukerkontoer
-
-\- medlemmer av administratorgruppen
-
-\- ledig diskplass
-
-\- aktive TCP-forbindelser
-
-\- prosessene som eier nettverksforbindelsene
-
-
-## Report preview
-
-The tool generates a local HTML report with a summary of security findings.
-
-![Windows Security Audit HTML report](docs/security-report-preview.png)
-
-
-
-\## Prosjektstruktur
-
-
+## Project Structure
 
 ```text
-
 Windows-Security-Audit/
-
 ├── Windows-Security-Audit.ps1
-
 ├── systemrapport.txt
-
+├── security-report.html
+├── docs/
+│   └── security-report-preview.jpeg
 └── README.md
 
