@@ -99,7 +99,91 @@ Get-NetTCPConnection -State Established |
     Sort-Object ProcessName, RemoteAddress |
     Format-Table -AutoSize |
     Out-File $report -Append
+"`n=== AUTOMATISK SIKKERHETSVURDERING ===" |
+    Out-File $report -Append
 
+$firewallProfiles = Get-NetFirewallProfile
+$defenderStatus = Get-MpComputerStatus
+$networkProfiles = Get-NetConnectionProfile
+$systemDrive = Get-Volume -DriveLetter C
+
+$adminGroup = Get-LocalGroup -SID "S-1-5-32-544"
+$enabledAdmins = Get-LocalGroupMember -Group $adminGroup |
+    Where-Object {
+        $_.ObjectClass -eq "User" -and
+        $_.Name -ne "$env:COMPUTERNAME\Administrator"
+    }
+
+if ($firewallProfiles.Enabled -contains $false) {
+    "[WARNING] En eller flere brannmurprofiler er deaktivert." |
+        Out-File $report -Append
+}
+else {
+    "[OK] Alle brannmurprofiler er aktivert." |
+        Out-File $report -Append
+}
+
+if (-not $defenderStatus.RealTimeProtectionEnabled) {
+    "[WARNING] Defender sanntidsbeskyttelse er deaktivert." |
+        Out-File $report -Append
+}
+else {
+    "[OK] Defender sanntidsbeskyttelse er aktivert." |
+        Out-File $report -Append
+}
+
+if ($defenderStatus.AntivirusSignatureAge -gt 3) {
+    "[WARNING] Defender-signaturene er eldre enn tre dager." |
+        Out-File $report -Append
+}
+else {
+    "[OK] Defender-signaturene er oppdaterte." |
+        Out-File $report -Append
+}
+
+if ($networkProfiles.NetworkCategory -contains "Public") {
+    "[REVIEW] Minst ett aktivt nettverk står som Public." |
+        Out-File $report -Append
+}
+else {
+    "[OK] Aktive nettverk bruker ikke Public-profil." |
+        Out-File $report -Append
+}
+
+if (@($enabledAdmins).Count -gt 1) {
+    "[REVIEW] Flere enn én aktiv brukerkonto har administratorrettigheter." |
+        Out-File $report -Append
+}
+else {
+    "[OK] Antallet aktive administratorbrukere er begrenset." |
+        Out-File $report -Append
+}
+
+$freePercentage = (
+    $systemDrive.SizeRemaining / $systemDrive.Size
+) * 100
+
+if ($freePercentage -lt 15) {
+    "[WARNING] Mindre enn 15 prosent ledig plass på C:-disken." |
+        Out-File $report -Append
+}
+else {
+    "[OK] C:-disken har tilstrekkelig ledig plass." |
+        Out-File $report -Append
+}
+
+if ($defenderStatus.FullScanAge -eq 4294967295) {
+    "[REVIEW] Ingen fullstendig Defender-skanning er registrert." |
+        Out-File $report -Append
+}
+elseif ($defenderStatus.FullScanAge -gt 30) {
+    "[REVIEW] Fullstendig Defender-skanning er eldre enn 30 dager." |
+        Out-File $report -Append
+}
+else {
+    "[OK] Fullstendig Defender-skanning er nylig gjennomført." |
+        Out-File $report -Append
+}
 
 Write-Host "Security audit completed."
 Write-Host "Report saved to: $report"
