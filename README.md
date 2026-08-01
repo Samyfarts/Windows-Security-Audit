@@ -1,4 +1,4 @@
-\# Windows Security Audit
+![Windows Security Audit HTML report](docs/security-report-preview.jpeg)
 
 
 
