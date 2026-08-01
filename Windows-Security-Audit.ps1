@@ -202,6 +202,8 @@ else {
         Out-File $report -Append
 }
 
+$htmlContent |
+    Set-Content -Path $htmlReport -Encoding UTF8
 
 Write-Host "Security audit completed."
 Write-Host "Text report saved to: $report"
