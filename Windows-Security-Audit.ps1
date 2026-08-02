@@ -252,6 +252,53 @@ else {
         Out-File -FilePath $report -Append -Encoding UTF8
 }
 
+# =========================================================
+# WINDOWS UPDATE ASSESSMENT
+# =========================================================
+
+"`n=== WINDOWS UPDATE ===" |
+    Out-File -FilePath $report -Append -Encoding UTF8
+
+try {
+    $latestUpdate = Get-HotFix -ErrorAction Stop |
+        Where-Object {
+            $_.InstalledOn
+        } |
+        Sort-Object InstalledOn -Descending |
+        Select-Object -First 1
+
+    if (-not $latestUpdate) {
+        "[REVIEW] No installed Windows updates were found." |
+            Out-File -FilePath $report -Append -Encoding UTF8
+    }
+    else {
+        $updateAge = (New-TimeSpan `
+            -Start $latestUpdate.InstalledOn `
+            -End (Get-Date)).Days
+
+        "Latest update: $($latestUpdate.HotFixID)" |
+            Out-File -FilePath $report -Append -Encoding UTF8
+
+        "Installed: $($latestUpdate.InstalledOn)" |
+            Out-File -FilePath $report -Append -Encoding UTF8
+
+        "Age in days: $updateAge" |
+            Out-File -FilePath $report -Append -Encoding UTF8
+
+        if ($updateAge -gt 45) {
+            "[REVIEW] The latest installed Windows update is older than 45 days." |
+                Out-File -FilePath $report -Append -Encoding UTF8
+        }
+        else {
+            "[OK] A Windows update was installed within the last 45 days." |
+                Out-File -FilePath $report -Append -Encoding UTF8
+        }
+    }
+}
+catch {
+    "[REVIEW] Windows Update information could not be retrieved." |
+        Out-File -FilePath $report -Append -Encoding UTF8
+}
 
 # =========================================================
 # BUILD HTML REPORT
