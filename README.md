@@ -41,6 +41,7 @@ The script also performs an automatic security assessment of:
 - available space on the system drive
 - age of the latest full Defender scan
 - age of the latest installed Windows update
+- BitLocker protection status on the system drive
 
 The assessment results are classified as:
 

@@ -301,6 +301,44 @@ catch {
 }
 
 # =========================================================
+# BITLOCKER ASSESSMENT
+# =========================================================
+
+"`n=== BITLOCKER ===" |
+    Out-File -FilePath $report -Append -Encoding UTF8
+
+try {
+    $bitLockerVolume = Get-BitLockerVolume `
+        -MountPoint "C:" `
+        -ErrorAction Stop
+
+    "Volume status: $($bitLockerVolume.VolumeStatus)" |
+        Out-File -FilePath $report -Append -Encoding UTF8
+
+    "Protection status: $($bitLockerVolume.ProtectionStatus)" |
+        Out-File -FilePath $report -Append -Encoding UTF8
+
+    "Encryption percentage: $($bitLockerVolume.EncryptionPercentage)" |
+        Out-File -FilePath $report -Append -Encoding UTF8
+
+    if ($bitLockerVolume.ProtectionStatus -eq "On") {
+        "[OK] BitLocker protection is enabled on the system drive." |
+            Out-File -FilePath $report -Append -Encoding UTF8
+    }
+    elseif ($bitLockerVolume.VolumeStatus -eq "FullyDecrypted") {
+        "[WARNING] BitLocker encryption is not enabled on the system drive." |
+            Out-File -FilePath $report -Append -Encoding UTF8
+    }
+    else {
+        "[REVIEW] BitLocker protection is not currently active on the system drive." |
+            Out-File -FilePath $report -Append -Encoding UTF8
+    }
+}
+catch {
+    "[REVIEW] BitLocker status could not be retrieved." |
+        Out-File -FilePath $report -Append -Encoding UTF8
+}
+# =========================================================
 # BUILD HTML REPORT
 # =========================================================
 
