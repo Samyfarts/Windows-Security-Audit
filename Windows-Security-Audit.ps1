@@ -10,6 +10,20 @@ param(
 $toolName = "Windows Security Audit"
 $toolVersion = "1.0.0-dev"
 
+function Add-AssessmentResult {
+    param(
+        [Parameter(Mandatory)]
+        [ValidateSet("OK", "REVIEW", "WARNING")]
+        [string]$Status,
+
+        [Parameter(Mandatory)]
+        [string]$Message
+    )
+
+    "[$Status] $Message" |
+        Out-File -FilePath $report -Append -Encoding UTF8
+}
+
 $scriptFolder = if ($PSScriptRoot) {
     $PSScriptRoot
 }
@@ -173,77 +187,172 @@ Get-NetTCPConnection -State Established -ErrorAction SilentlyContinue |
 "`n=== AUTOMATIC SECURITY ASSESSMENT ===" |
     Out-File -FilePath $report -Append -Encoding UTF8
 
-$firewallProfiles = Get-NetFirewallProfile
-$defenderStatus = Get-MpComputerStatus
-$networkProfiles = Get-NetConnectionProfile
-$systemDrive = Get-Volume -DriveLetter C
 
-$enabledAdmins = Get-LocalGroupMember -Group $adminGroup |
-    Where-Object {
-        $_.ObjectClass -eq "User" -and
-        $_.PrincipalSource -eq "Local"
-    } |
-    ForEach-Object {
-        $accountName = ($_.Name -split "\\")[-1]
+# =========================================================
+# COLLECT SECURITY STATUS
+# =========================================================
 
-        Get-LocalUser `
-            -Name $accountName `
-            -ErrorAction SilentlyContinue
-    } |
-    Where-Object {
-        $_.Enabled -eq $true
-    }
+try {
+    $firewallProfiles = Get-NetFirewallProfile -ErrorAction Stop
+}
+catch {
+    $firewallProfiles = $null
+}
+
+try {
+    $defenderStatus = Get-MpComputerStatus -ErrorAction Stop
+}
+catch {
+    $defenderStatus = $null
+}
+
+try {
+    $networkProfiles = Get-NetConnectionProfile -ErrorAction Stop
+}
+catch {
+    $networkProfiles = $null
+}
+
+try {
+    $systemDrive = Get-Volume `
+        -DriveLetter C `
+        -ErrorAction Stop
+}
+catch {
+    $systemDrive = $null
+}
+
+try {
+    $enabledAdmins = Get-LocalGroupMember `
+        -Group $adminGroup `
+        -ErrorAction Stop |
+        Where-Object {
+            $_.ObjectClass -eq "User"
+        } |
+        ForEach-Object {
+            $accountName = ($_.Name -split "\\")[-1]
+
+            Get-LocalUser `
+                -Name $accountName `
+                -ErrorAction SilentlyContinue
+        } |
+        Where-Object {
+            $_ -and $_.Enabled -eq $true
+        }
+}
+catch {
+    $enabledAdmins = $null
+}
 
 
-if ($firewallProfiles.Enabled -contains $false) {
-    "[WARNING] One or more firewall profiles are disabled." |
-        Out-File -FilePath $report -Append -Encoding UTF8
+# =========================================================
+# FIREWALL ASSESSMENT
+# =========================================================
+
+if (-not $firewallProfiles) {
+    Add-AssessmentResult `
+        -Status "REVIEW" `
+        -Message "Windows Firewall status could not be retrieved."
+}
+elseif ($firewallProfiles.Enabled -contains $false) {
+    Add-AssessmentResult `
+        -Status "WARNING" `
+        -Message "One or more firewall profiles are disabled."
 }
 else {
-    "[OK] All firewall profiles are enabled." |
-        Out-File -FilePath $report -Append -Encoding UTF8
+    Add-AssessmentResult `
+        -Status "OK" `
+        -Message "All firewall profiles are enabled."
 }
 
 
-if (-not $defenderStatus.RealTimeProtectionEnabled) {
-    "[WARNING] Defender real-time protection is disabled." |
-        Out-File -FilePath $report -Append -Encoding UTF8
-}
-else {
-    "[OK] Defender real-time protection is enabled." |
-        Out-File -FilePath $report -Append -Encoding UTF8
-}
+# =========================================================
+# DEFENDER REAL-TIME PROTECTION ASSESSMENT
+# =========================================================
 
-
-if ($defenderStatus.AntivirusSignatureAge -gt 3) {
-    "[WARNING] Defender signatures are older than three days." |
-        Out-File -FilePath $report -Append -Encoding UTF8
+if (-not $defenderStatus) {
+    Add-AssessmentResult `
+        -Status "REVIEW" `
+        -Message "Microsoft Defender status could not be retrieved."
 }
-else {
-    "[OK] Defender signatures are up to date." |
-        Out-File -FilePath $report -Append -Encoding UTF8
-}
-
-
-if ($networkProfiles.NetworkCategory -contains "Public") {
-    "[REVIEW] At least one active network is set to Public." |
-        Out-File -FilePath $report -Append -Encoding UTF8
+elseif (-not $defenderStatus.RealTimeProtectionEnabled) {
+    Add-AssessmentResult `
+        -Status "WARNING" `
+        -Message "Defender real-time protection is disabled."
 }
 else {
-    "[OK] Active networks are not using the Public profile." |
-        Out-File -FilePath $report -Append -Encoding UTF8
+    Add-AssessmentResult `
+        -Status "OK" `
+        -Message "Defender real-time protection is enabled."
 }
 
 
-if (@($enabledAdmins).Count -gt 1) {
-    "[REVIEW] More than one active local user account has administrator privileges." |
-        Out-File -FilePath $report -Append -Encoding UTF8
+# =========================================================
+# DEFENDER SIGNATURE ASSESSMENT
+# =========================================================
+
+if (-not $defenderStatus) {
+    Add-AssessmentResult `
+        -Status "REVIEW" `
+        -Message "Defender signature status could not be evaluated."
+}
+elseif ($defenderStatus.AntivirusSignatureAge -gt 3) {
+    Add-AssessmentResult `
+        -Status "WARNING" `
+        -Message "Defender signatures are older than three days."
 }
 else {
-    "[OK] The number of active local administrator users is limited." |
-        Out-File -FilePath $report -Append -Encoding UTF8
+    Add-AssessmentResult `
+        -Status "OK" `
+        -Message "Defender signatures are up to date."
 }
 
+
+# =========================================================
+# NETWORK PROFILE ASSESSMENT
+# =========================================================
+
+if (-not $networkProfiles) {
+    Add-AssessmentResult `
+        -Status "REVIEW" `
+        -Message "The active network profile could not be retrieved."
+}
+elseif ($networkProfiles.NetworkCategory -contains "Public") {
+    Add-AssessmentResult `
+        -Status "REVIEW" `
+        -Message "At least one active network is set to Public."
+}
+else {
+    Add-AssessmentResult `
+        -Status "OK" `
+        -Message "Active networks are not using the Public profile."
+}
+
+
+# =========================================================
+# LOCAL ADMINISTRATOR ASSESSMENT
+# =========================================================
+
+if ($null -eq $enabledAdmins) {
+    Add-AssessmentResult `
+        -Status "REVIEW" `
+        -Message "Enabled local administrator accounts could not be evaluated."
+}
+elseif (@($enabledAdmins).Count -gt 1) {
+    Add-AssessmentResult `
+        -Status "REVIEW" `
+        -Message "More than one active local user account has administrator privileges."
+}
+else {
+    Add-AssessmentResult `
+        -Status "OK" `
+        -Message "The number of active local administrator users is limited."
+}
+
+
+# =========================================================
+# DISK SPACE ASSESSMENT
+# =========================================================
 
 if ($systemDrive -and $systemDrive.Size -gt 0) {
     $freePercentage = (
@@ -251,32 +360,48 @@ if ($systemDrive -and $systemDrive.Size -gt 0) {
     ) * 100
 
     if ($freePercentage -lt 15) {
-        "[WARNING] Less than 15 percent free space on the C:-drive." |
-            Out-File -FilePath $report -Append -Encoding UTF8
+        Add-AssessmentResult `
+            -Status "WARNING" `
+            -Message "Less than 15 percent free space remains on the system drive."
     }
     else {
-        "[OK] The C:-drive has sufficient free space." |
-            Out-File -FilePath $report -Append -Encoding UTF8
+        Add-AssessmentResult `
+            -Status "OK" `
+            -Message "The system drive has sufficient free space."
     }
 }
 else {
-    "[REVIEW] Free space on the C:-drive could not be evaluated." |
-        Out-File -FilePath $report -Append -Encoding UTF8
+    Add-AssessmentResult `
+        -Status "REVIEW" `
+        -Message "Free space on the system drive could not be evaluated."
 }
 
 
-if ($defenderStatus.FullScanAge -eq 4294967295) {
-    "[REVIEW] No complete Defender scan has been recorded." |
-        Out-File -FilePath $report -Append -Encoding UTF8
+# =========================================================
+# DEFENDER FULL SCAN ASSESSMENT
+# =========================================================
+
+if (-not $defenderStatus) {
+    Add-AssessmentResult `
+        -Status "REVIEW" `
+        -Message "Defender full scan status could not be evaluated."
+}
+elseif ($defenderStatus.FullScanAge -eq 4294967295) {
+    Add-AssessmentResult `
+        -Status "REVIEW" `
+        -Message "No complete Defender scan has been recorded."
 }
 elseif ($defenderStatus.FullScanAge -gt 30) {
-    "[REVIEW] Complete Defender scan is older than 30 days." |
-        Out-File -FilePath $report -Append -Encoding UTF8
+    Add-AssessmentResult `
+        -Status "REVIEW" `
+        -Message "The latest complete Defender scan is older than 30 days."
 }
 else {
-    "[OK] Complete Defender scan was performed recently." |
-        Out-File -FilePath $report -Append -Encoding UTF8
+    Add-AssessmentResult `
+        -Status "OK" `
+        -Message "A complete Defender scan was performed recently."
 }
+
 
 # =========================================================
 # WINDOWS UPDATE ASSESSMENT
@@ -294,13 +419,16 @@ try {
         Select-Object -First 1
 
     if (-not $latestUpdate) {
-        "[REVIEW] No installed Windows updates were found." |
-            Out-File -FilePath $report -Append -Encoding UTF8
+        Add-AssessmentResult `
+            -Status "REVIEW" `
+            -Message "No installed Windows updates were found."
     }
     else {
-        $updateAge = (New-TimeSpan `
-            -Start $latestUpdate.InstalledOn `
-            -End (Get-Date)).Days
+        $updateAge = (
+            New-TimeSpan `
+                -Start $latestUpdate.InstalledOn `
+                -End (Get-Date)
+        ).Days
 
         "Latest update: $($latestUpdate.HotFixID)" |
             Out-File -FilePath $report -Append -Encoding UTF8
@@ -312,19 +440,23 @@ try {
             Out-File -FilePath $report -Append -Encoding UTF8
 
         if ($updateAge -gt 45) {
-            "[REVIEW] The latest installed Windows update is older than 45 days." |
-                Out-File -FilePath $report -Append -Encoding UTF8
+            Add-AssessmentResult `
+                -Status "REVIEW" `
+                -Message "The latest installed Windows update is older than 45 days."
         }
         else {
-            "[OK] A Windows update was installed within the last 45 days." |
-                Out-File -FilePath $report -Append -Encoding UTF8
+            Add-AssessmentResult `
+                -Status "OK" `
+                -Message "A Windows update was installed within the last 45 days."
         }
     }
 }
 catch {
-    "[REVIEW] Windows Update information could not be retrieved." |
-        Out-File -FilePath $report -Append -Encoding UTF8
+    Add-AssessmentResult `
+        -Status "REVIEW" `
+        -Message "Windows Update information could not be retrieved."
 }
+
 
 # =========================================================
 # BITLOCKER ASSESSMENT
@@ -348,59 +480,26 @@ try {
         Out-File -FilePath $report -Append -Encoding UTF8
 
     if ($bitLockerVolume.ProtectionStatus -eq "On") {
-        "[OK] BitLocker protection is enabled on the system drive." |
-            Out-File -FilePath $report -Append -Encoding UTF8
+        Add-AssessmentResult `
+            -Status "OK" `
+            -Message "BitLocker protection is enabled on the system drive."
     }
     elseif ($bitLockerVolume.VolumeStatus -eq "FullyDecrypted") {
-        "[WARNING] BitLocker encryption is not enabled on the system drive." |
-            Out-File -FilePath $report -Append -Encoding UTF8
+        Add-AssessmentResult `
+            -Status "WARNING" `
+            -Message "BitLocker encryption is not enabled on the system drive."
     }
     else {
-        "[REVIEW] BitLocker protection is not currently active on the system drive." |
-            Out-File -FilePath $report -Append -Encoding UTF8
+        Add-AssessmentResult `
+            -Status "REVIEW" `
+            -Message "BitLocker protection is not currently active on the system drive."
     }
 }
 catch {
-    "[REVIEW] BitLocker status could not be retrieved." |
-        Out-File -FilePath $report -Append -Encoding UTF8
+    Add-AssessmentResult `
+        -Status "REVIEW" `
+        -Message "BitLocker status could not be retrieved."
 }
-
-# =========================================================
-# BUILD JSON REPORT
-# =========================================================
-
-$jsonContent = [PSCustomObject]@{
-    Tool = [PSCustomObject]@{
-        Name    = $toolName
-        Version = $toolVersion
-    }
-
-    Computer = [PSCustomObject]@{
-        Name = $env:COMPUTERNAME
-    }
-
-    Generated = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-
-    Summary = [PSCustomObject]@{
-        OK      = $okCount
-        Review  = $reviewCount
-        Warning = $warningCount
-        Total   = $assessmentRows.Count
-    }
-
-    Findings = @(
-        $assessmentRows | ForEach-Object {
-            [PSCustomObject]@{
-                Status  = $_.Status
-                Finding = $_.Finding
-            }
-        }
-    )
-}
-
-$jsonContent |
-    ConvertTo-Json -Depth 5 |
-    Set-Content -Path $jsonReport -Encoding UTF8
 
 # =========================================================
 # BUILD HTML REPORT
@@ -443,6 +542,43 @@ $assessmentRows = foreach ($line in $assessmentLines) {
         }
     }
 }
+
+# =========================================================
+# BUILD JSON REPORT
+# =========================================================
+
+$jsonContent = [PSCustomObject]@{
+    Tool = [PSCustomObject]@{
+        Name    = $toolName
+        Version = $toolVersion
+    }
+
+    Computer = [PSCustomObject]@{
+        Name = $env:COMPUTERNAME
+    }
+
+    Generated = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+
+    Summary = [PSCustomObject]@{
+        OK      = $okCount
+        Review  = $reviewCount
+        Warning = $warningCount
+        Total   = $assessmentRows.Count
+    }
+
+    Findings = @(
+        $assessmentRows | ForEach-Object {
+            [PSCustomObject]@{
+                Status  = $_.Status
+                Finding = $_.Finding
+            }
+        }
+    )
+}
+
+$jsonContent |
+    ConvertTo-Json -Depth 5 |
+    Set-Content -Path $jsonReport -Encoding UTF8
 
 
 $assessmentHtml = foreach ($item in $assessmentRows) {
@@ -572,9 +708,10 @@ th {
 <body>
 <div class="container">
 
-<h1>Windows Security Audit</h1>
+<h1>$toolName</h1>
 
 <p>
+<strong>Version:</strong> $toolVersion<br>
 <strong>Computer:</strong> $env:COMPUTERNAME<br>
 <strong>Generated:</strong> $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
 </p>
@@ -612,7 +749,7 @@ $($assessmentHtml -join "`n")
 </table>
 
 <div class="footer">
-Generated by Windows Security Audit PowerShell Tool
+Generated by $toolName
 </div>
 
 </div>
@@ -630,6 +767,12 @@ $htmlContent |
 # =========================================================
 
 Write-Host "Security audit completed."
+Write-Host "Tool version: $toolVersion"
 Write-Host "Assessment results: $okCount OK, $reviewCount REVIEW, $warningCount WARNING"
 Write-Host "Text report saved to: $report"
 Write-Host "HTML report saved to: $htmlReport"
+Write-Host "JSON report saved to: $jsonReport"
+
+if ($OpenReport) {
+    Start-Process -FilePath $htmlReport
+}
