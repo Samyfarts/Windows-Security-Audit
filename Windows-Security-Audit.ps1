@@ -20,7 +20,7 @@ $htmlReport = Join-Path $scriptFolder "security-report.html"
     Out-File -FilePath $report -Append -Encoding UTF8
 
 
-"`n=== OPERATIVSYSTEM ===" |
+"`n=== OPERATING SYSTEM ===" |
     Out-File -FilePath $report -Append -Encoding UTF8
 
 Get-CimInstance Win32_OperatingSystem |
@@ -29,7 +29,7 @@ Get-CimInstance Win32_OperatingSystem |
     Out-File -FilePath $report -Append -Encoding UTF8
 
 
-"`n=== NETTVERK ===" |
+"`n=== NETWORK ===" |
     Out-File -FilePath $report -Append -Encoding UTF8
 
 Get-NetIPConfiguration |
@@ -37,7 +37,7 @@ Get-NetIPConfiguration |
     Out-File -FilePath $report -Append -Encoding UTF8
 
 
-"`n=== NETTVERKSPROFIL ===" |
+"`n=== NETWORK PROFIL ===" |
     Out-File -FilePath $report -Append -Encoding UTF8
 
 Get-NetConnectionProfile |
@@ -46,7 +46,7 @@ Get-NetConnectionProfile |
     Out-File -FilePath $report -Append -Encoding UTF8
 
 
-"`n=== BRANNMUR ===" |
+"`n=== FIREWALL ===" |
     Out-File -FilePath $report -Append -Encoding UTF8
 
 Get-NetFirewallProfile |
@@ -74,7 +74,7 @@ Get-MpComputerStatus |
     Out-File -FilePath $report -Append -Encoding UTF8
 
 
-"`n=== LOKALE BRUKERE ===" |
+"`n=== LOCAL USERS ===" |
     Out-File -FilePath $report -Append -Encoding UTF8
 
 Get-LocalUser |
@@ -83,7 +83,7 @@ Get-LocalUser |
     Out-File -FilePath $report -Append -Encoding UTF8
 
 
-"`n=== LOKALE ADMINISTRATORER ===" |
+"`n=== LOCAL ADMINISTRATORS ===" |
     Out-File -FilePath $report -Append -Encoding UTF8
 
 $adminGroup = Get-LocalGroup -SID "S-1-5-32-544"
@@ -94,7 +94,7 @@ Get-LocalGroupMember -Group $adminGroup |
     Out-File -FilePath $report -Append -Encoding UTF8
 
 
-"`n=== DISKPLASS ===" |
+"`n=== DISK SPACE ===" |
     Out-File -FilePath $report -Append -Encoding UTF8
 
 Get-Volume |
@@ -117,7 +117,7 @@ Get-Volume |
     Out-File -FilePath $report -Append -Encoding UTF8
 
 
-"`n=== AKTIVE TCP-FORBINDELSER ===" |
+"`n=== ACTIVE TCP CONNECTIONS ===" |
     Out-File -FilePath $report -Append -Encoding UTF8
 
 Get-NetTCPConnection -State Established -ErrorAction SilentlyContinue |
@@ -144,7 +144,7 @@ Get-NetTCPConnection -State Established -ErrorAction SilentlyContinue |
 # SECURITY ASSESSMENT
 # =========================================================
 
-"`n=== AUTOMATISK SIKKERHETSVURDERING ===" |
+"`n=== AUTOMATIC SECURITY ASSESSMENT ===" |
     Out-File -FilePath $report -Append -Encoding UTF8
 
 $firewallProfiles = Get-NetFirewallProfile
@@ -170,51 +170,51 @@ $enabledAdmins = Get-LocalGroupMember -Group $adminGroup |
 
 
 if ($firewallProfiles.Enabled -contains $false) {
-    "[WARNING] En eller flere brannmurprofiler er deaktivert." |
+    "[WARNING] One or more firewall profiles are disabled." |
         Out-File -FilePath $report -Append -Encoding UTF8
 }
 else {
-    "[OK] Alle brannmurprofiler er aktivert." |
+    "[OK] All firewall profiles are enabled." |
         Out-File -FilePath $report -Append -Encoding UTF8
 }
 
 
 if (-not $defenderStatus.RealTimeProtectionEnabled) {
-    "[WARNING] Defender sanntidsbeskyttelse er deaktivert." |
+    "[WARNING] Defender real-time protection is disabled." |
         Out-File -FilePath $report -Append -Encoding UTF8
 }
 else {
-    "[OK] Defender sanntidsbeskyttelse er aktivert." |
+    "[OK] Defender real-time protection is enabled." |
         Out-File -FilePath $report -Append -Encoding UTF8
 }
 
 
 if ($defenderStatus.AntivirusSignatureAge -gt 3) {
-    "[WARNING] Defender-signaturene er eldre enn tre dager." |
+    "[WARNING] Defender signatures are older than three days." |
         Out-File -FilePath $report -Append -Encoding UTF8
 }
 else {
-    "[OK] Defender-signaturene er oppdaterte." |
+    "[OK] Defender signatures are up to date." |
         Out-File -FilePath $report -Append -Encoding UTF8
 }
 
 
 if ($networkProfiles.NetworkCategory -contains "Public") {
-    "[REVIEW] Minst ett aktivt nettverk står som Public." |
+    "[REVIEW] At least one active network is set to Public." |
         Out-File -FilePath $report -Append -Encoding UTF8
 }
 else {
-    "[OK] Aktive nettverk bruker ikke Public-profil." |
+    "[OK] Active networks are not using the Public profile." |
         Out-File -FilePath $report -Append -Encoding UTF8
 }
 
 
 if (@($enabledAdmins).Count -gt 1) {
-    "[REVIEW] Flere enn én aktiv lokal brukerkonto har administratorrettigheter." |
+    "[REVIEW] More than one active local user account has administrator privileges." |
         Out-File -FilePath $report -Append -Encoding UTF8
 }
 else {
-    "[OK] Antallet aktive lokale administratorbrukere er begrenset." |
+    "[OK] The number of active local administrator users is limited." |
         Out-File -FilePath $report -Append -Encoding UTF8
 }
 
@@ -225,30 +225,30 @@ if ($systemDrive -and $systemDrive.Size -gt 0) {
     ) * 100
 
     if ($freePercentage -lt 15) {
-        "[WARNING] Mindre enn 15 prosent ledig plass på C:-disken." |
+        "[WARNING] Less than 15 percent free space on the C:-drive." |
             Out-File -FilePath $report -Append -Encoding UTF8
     }
     else {
-        "[OK] C:-disken har tilstrekkelig ledig plass." |
+        "[OK] The C:-drive has sufficient free space." |
             Out-File -FilePath $report -Append -Encoding UTF8
     }
 }
 else {
-    "[REVIEW] Ledig plass på C:-disken kunne ikke vurderes." |
+    "[REVIEW] Free space on the C:-drive could not be evaluated." |
         Out-File -FilePath $report -Append -Encoding UTF8
 }
 
 
 if ($defenderStatus.FullScanAge -eq 4294967295) {
-    "[REVIEW] Ingen fullstendig Defender-skanning er registrert." |
+    "[REVIEW] No complete Defender scan has been recorded." |
         Out-File -FilePath $report -Append -Encoding UTF8
 }
 elseif ($defenderStatus.FullScanAge -gt 30) {
-    "[REVIEW] Fullstendig Defender-skanning er eldre enn 30 dager." |
+    "[REVIEW] Complete Defender scan is older than 30 days." |
         Out-File -FilePath $report -Append -Encoding UTF8
 }
 else {
-    "[OK] Fullstendig Defender-skanning er nylig gjennomført." |
+    "[OK] Complete Defender scan was performed recently." |
         Out-File -FilePath $report -Append -Encoding UTF8
 }
 
