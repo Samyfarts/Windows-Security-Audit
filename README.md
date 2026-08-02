@@ -40,6 +40,7 @@ The script also performs an automatic security assessment of:
 - enabled local administrator accounts
 - available space on the system drive
 - age of the latest full Defender scan
+- age of the latest installed Windows update
 
 The assessment results are classified as:
 
