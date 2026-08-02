@@ -1,3 +1,15 @@
+[CmdletBinding()]
+param(
+    [Parameter()]
+    [string]$OutputFolder,
+
+    [Parameter()]
+    [switch]$OpenReport
+)
+
+$toolName = "Windows Security Audit"
+$toolVersion = "1.0.0-dev"
+
 $scriptFolder = if ($PSScriptRoot) {
     $PSScriptRoot
 }
@@ -5,9 +17,23 @@ else {
     Get-Location
 }
 
-$report = Join-Path $scriptFolder "systemrapport.txt"
-$htmlReport = Join-Path $scriptFolder "security-report.html"
+if ([string]::IsNullOrWhiteSpace($OutputFolder)) {
+    $OutputFolder = $scriptFolder
+}
 
+if (-not (Test-Path -Path $OutputFolder)) {
+    New-Item `
+        -Path $OutputFolder `
+        -ItemType Directory `
+        -Force |
+        Out-Null
+}
+
+$OutputFolder = (Resolve-Path -Path $OutputFolder).Path
+
+$report = Join-Path $OutputFolder "systemrapport.txt"
+$htmlReport = Join-Path $OutputFolder "security-report.html"
+$jsonReport = Join-Path $OutputFolder "security-report.json"
 
 # =========================================================
 # TEXT REPORT
@@ -338,6 +364,44 @@ catch {
     "[REVIEW] BitLocker status could not be retrieved." |
         Out-File -FilePath $report -Append -Encoding UTF8
 }
+
+# =========================================================
+# BUILD JSON REPORT
+# =========================================================
+
+$jsonContent = [PSCustomObject]@{
+    Tool = [PSCustomObject]@{
+        Name    = $toolName
+        Version = $toolVersion
+    }
+
+    Computer = [PSCustomObject]@{
+        Name = $env:COMPUTERNAME
+    }
+
+    Generated = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+
+    Summary = [PSCustomObject]@{
+        OK      = $okCount
+        Review  = $reviewCount
+        Warning = $warningCount
+        Total   = $assessmentRows.Count
+    }
+
+    Findings = @(
+        $assessmentRows | ForEach-Object {
+            [PSCustomObject]@{
+                Status  = $_.Status
+                Finding = $_.Finding
+            }
+        }
+    )
+}
+
+$jsonContent |
+    ConvertTo-Json -Depth 5 |
+    Set-Content -Path $jsonReport -Encoding UTF8
+
 # =========================================================
 # BUILD HTML REPORT
 # =========================================================
