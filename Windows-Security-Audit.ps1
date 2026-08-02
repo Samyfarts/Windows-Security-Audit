@@ -45,7 +45,7 @@ if (-not (Test-Path -Path $OutputFolder)) {
 
 $OutputFolder = (Resolve-Path -Path $OutputFolder).Path
 
-$report = Join-Path $OutputFolder "systemrapport.txt"
+$report = Join-Path $OutputFolder "system-report.txt"
 $htmlReport = Join-Path $OutputFolder "security-report.html"
 $jsonReport = Join-Path $OutputFolder "security-report.json"
 
@@ -77,7 +77,7 @@ Get-NetIPConfiguration |
     Out-File -FilePath $report -Append -Encoding UTF8
 
 
-"`n=== NETWORK PROFIL ===" |
+"`n=== NETWORK PROFILE ===" |
     Out-File -FilePath $report -Append -Encoding UTF8
 
 Get-NetConnectionProfile |

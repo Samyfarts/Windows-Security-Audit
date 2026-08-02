@@ -304,16 +304,6 @@ This allows the remaining security checks and reports to be completed.
 - `Get-HotFix` does not represent every possible Windows update mechanism
 - Third-party antivirus products may affect Microsoft Defender results
 
-## Planned Version 1.0 Improvements
-
-- Refactor the script into reusable PowerShell functions
-- Add an administrator privilege check
-- Improve validation of collected data
-- Standardise report filenames
-- Improve report metadata
-- Add additional usage documentation
-- Publish a tagged GitHub release
-
 ## Future Development
 
 Possible future features include:
@@ -357,13 +347,16 @@ It demonstrates practical experience with:
 - Git and GitHub
 - technical documentation
 
-## Version
+## Version 1.0
 
-Current development version:
+Version 1.0 includes:
 
-```text
-1.0.0-dev
-```
+- nine automatic security checks
+- TXT, HTML, and JSON reports
+- configurable output folder
+- automatic HTML report opening
+- structured error handling
+- report metadata and version information
 
 ## Author
 
