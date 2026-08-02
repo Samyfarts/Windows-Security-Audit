@@ -244,7 +244,7 @@ Example:
 {
   "Tool": {
     "Name": "Windows Security Audit",
-    "Version": "1.0.0-dev"
+    "Version": "1.0.0"
   },
   "Computer": {
     "Name": "COMPUTER-NAME"

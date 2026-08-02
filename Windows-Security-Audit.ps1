@@ -8,7 +8,7 @@ param(
 )
 
 $toolName = "Windows Security Audit"
-$toolVersion = "1.0.0-dev"
+$toolVersion = "1.0.0"
 
 function Add-AssessmentResult {
     param(
